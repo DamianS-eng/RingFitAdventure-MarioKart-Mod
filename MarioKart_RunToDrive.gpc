@@ -1,5 +1,4 @@
-#pragma METAINFO("RingFit_MarioKart", 1,0, "<Super Louis 64>")
-
+#pragma METAINFO("RingFit_MarioKart", 1,1, "originally by <Super Louis 64>, edited by DaMu")
 
 /*
 Mario Kart meets Ringfit
@@ -8,104 +7,46 @@ DM @SuperLouis_64 if you need any help.
 Please credit @SuperLouis_64 if you used the mod for any post online
 I've put a ton of time figuring this out and to keep the mods free
 all I ask is for credit
-
 */
 
-int runCheck;
-bool canRun;
+#include <switch.gph>
+
+//1 byte
+bool canRun, canDebug;
+
+uint8 runCheck, runThreshold, runPace;
+int squeezeLevel, runA, runB, runC;
+
+void loadFromMemory()
+{
+	pmem_load();
+	pmem_read(0, &runThreshold);
+	pmem_read(1, &runPace);
+	pmem_read(2, &canDebug);
+	pmem_read(3, &squeezeLevel);
+	pmem_read(4, &runA);
+	pmem_read(5, &runB);
+	pmem_read(6, &runC);
+}
 
 init
 {
-	
-	
+	loadFromMemory();
+
 	// remap sticks so you can run with the right joycon.
-	remapper_swap(STICK_2_X, STICK_1_X);
-	remapper_swap(STICK_2_Y, STICK_1_Y);
+	remapper_swap(SWITCH_LX, SWITCH_RX);
+	remapper_swap(SWITCH_LY, SWITCH_RY);
 	runCheck = 0;
 	canRun = FALSE;
 }
-
-
 
 main 
 {
 	// this program deals with checking runs, explained after main()
 	nowRunning();
-	
-	if(get_val(BUTTON_3) > 0.0) //turn off the run controller
-		{
-			canRun = FALSE;
-			set_val(BUTTON_3, 0.0);
-		}
-		
-	if(get_val(BUTTON_1) > 0.0)
-		{
-			canRun = TRUE;
-			set_val(BUTTON_1, 0.0);
-		}
-	
-	//if you are underneath the pace threshold, do this
-	// Louis' note: check back on this because why is this here?
-	if(runCheck < 60)
-		{
-			
-			if(get_val(BUTTON_3) > 0.0) // switch the + button with -
-				{
-					set_val(BUTTON_3, 0.0); 
-					set_val(BUTTON_2, 100.0);
-				}
-			
-		}
-
-	// RS to drift so you can hold the item
-		if(get_val(BUTTON_6) > 0.0)
-			{
-				set_val(BUTTON_5, 100.0);
-			}
-		
-
-
-	// if you are running or above pace, do this
-	if(runCheck >= 50 && canRun)
-		{					
-			
-		set_val(BUTTON_15, 100.0); // Run to drive
-					
-		}
-
-
-// Make the R button the L button Button 4 -> BUTTON 7
-	if(get_val(BUTTON_4) > 0.0)
-		{
-			set_val(BUTTON_4, 0.0);
-			set_val(BUTTON_7, 100.0);
-		}
-
-// turn off D-pad so it doesn't be messed with on the legstrap		
-set_val(BUTTON_10, 0.0);
-set_val(BUTTON_11, 0.0);
-set_val(BUTTON_12, 0.0);
-set_val(BUTTON_13, 0.0);
-		
-/*
-///////////////////////////////////////////////		
-Below is just a mash-up of button swaps
-This allows the user to play with just one joycon
-
-the magic numbers are based off of personal tests
-///////////////////////////////////////////////
-*/
-		
-// terrible way to determine if ringcon is squeezed. Titan Two doesn't grab the flex sensor
-// however this is what I got from the ringcon to squeeze to use item
-// You can also do this without the ringcon, just punch and it should do the same input
-	if(get_val(ACCEL_2_X) < -25.0)
-		{
-			set_val(BUTTON_7, 100.0); // use items
-		}		
-
-//debug();
-
+	changeControls();
+	debug(canDebug);
+	squeezeCon();
 }
 
 /*
@@ -115,26 +56,199 @@ the magic numbers are based off of personal tests
 	This way there isn't an immediate loss of movement in-game 
 	There are definitely better way to do this with better math
 	Plans to update this later on!
-
 */
 void nowRunning()
 {
-	if(get_val(ACCEL_1_Y) < -30.6)
+	if(get_val(ACCEL_1_Y) < runA )
 		{
-			runCheck = 100;	
-				
+			runCheck = 100;					
 		}
-	if(get_val(ACCEL_1_Y) < -23.8 && get_val(ACCEL_1_Y) > -24.6)
+	if(get_val(ACCEL_1_Y) < runB  && get_val(ACCEL_1_Y) > runC )
 		{
 			runCheck--;
 		}
-
 }
 
+void squeezeCon()
+{
+	// terrible way to determine if ringcon is squeezed. Titan Two doesn't grab the flex sensor
+	// however this is what I got from the ringcon to squeeze to use item
+	// You can also do this without the ringcon, just punch and it should do the same input
+	if(get_val(ACCEL_2_X) < squeezeLevel)
+		{
+			set_val(SWITCH_L, 100.0); // use items
+		}		
+}
+
+void changeControls()
+{
+/*
+///////////////////////////////////////////////		
+Below is just a mash-up of button swaps
+This allows the user to play with just one joycon
+
+the magic numbers are based off of personal tests
+///////////////////////////////////////////////
+*/	
+	if(get_val(SWITCH_PLUS) > 0.0) //turn off the run controller
+		{
+			canRun = FALSE;
+			set_val(SWITCH_PLUS, 0.0);
+		}
+		
+	if(get_val(SWITCH_HOME) > 0.0)
+		{
+			canRun = TRUE;
+			set_val(SWITCH_HOME, 0.0);
+		}
+	
+//if you are underneath the pace threshold, do this
+// Louis' note: check back on this because why is this here?
+	if(runCheck < runThreshold)
+		{
+			if(get_val(SWITCH_PLUS) > 0.0) // switch the + button with -
+				{
+					set_val(SWITCH_PLUS, 0.0); 
+					set_val(SWITCH_MINUS, 100.0);
+				}	
+		}
+
+// RS to drift so you can hold the item
+	if(get_val(SWITCH_RS) > 0.0)
+		{
+			set_val(SWITCH_ZR, 100.0);
+		}
+
+// if you are running or above pace, do this
+	if(runCheck >= runPace && canRun)
+		{					
+		set_val(SWITCH_A, 100.0); // Run to drive
+		}
+
+// Make the R button the L button
+	if(get_val(SWITCH_R) > 0.0)
+		{
+			set_val(SWITCH_R, 0.0);
+			set_val(SWITCH_L, 100.0);
+		}
+
+// turn off D-pad so it doesn't be messed with on the legstrap		
+	set_val(SWITCH_UP, 0.0);
+	set_val(SWITCH_DOWN, 0.0);
+	set_val(SWITCH_LEFT, 0.0);
+	set_val(SWITCH_RIGHT, 0.0);	
+}
 
 // debug check for my runCheck
-void debug()
+void debug(bool canDebug)
 {
-	printf("%d", runCheck);
-	
+	if (canDebug)
+		{
+			printf("%d", runCheck);
+		}
 }
+
+/*
+<cfgdesc>
+[Run Threshold]
+group = FALSE
+groupcol = FALSE
+control = slider
+color = #0033FF
+collapsible = 1
+shortdesc = Determine the threshold at which you must pass by running to shift buttons.
+byteoffset = 0
+bitsize = 8
+default = 60
+item = Run Threshold
+minimum = 20
+maximum = 90
+step = 1
+
+[Run Pace]
+group = TRUE
+groupcol = FALSE
+control = slider
+color = #0033FF
+collapsible = 1
+shortdesc = Stay above this level by running to keep the A button pressed.
+byteoffset = 1
+bitsize = 8
+default = 50
+item = Run Pace
+minimum = 30
+maximum = 90
+step = 1
+
+[Debug]
+group = FALSE
+control = checkbox
+color = #0022DD
+collapsible = 1
+shortdesc = Want to debug the adapter to the terminal?
+byteoffset = 2
+item = Enable Debug
+bitsize = 8
+default = 0
+
+[Squeeze Level]
+group = FALSE
+groupcol = FALSE
+control = slider
+color = #AA00FF
+collapsible = 1
+shortdesc = Squeeze the Rincon past this level to use a button.
+byteoffset = 3
+bitsize = 8
+default = -25
+item = Squeeze Level
+minimum = -30
+maximum = 30
+step = 1
+
+[Running]
+group = FALSE
+groupcol = FALSE
+control = slider
+color = #AA00FF
+collapsible = 1
+shortdesc = Accelerometer beyond this value to be considered running.
+byteoffset = 4
+bitsize = 8
+default = -30.6
+item = run check point
+minimum = -35
+maximum = 35
+step = 1
+
+[Running Point Low]
+group = TRUE
+groupcol = TRUE
+control = slider
+color = #AA00FF
+collapsible = 1
+shortdesc = The accelerometer point closest to 0 at which run check will decrement.
+byteoffset = 5
+bitsize = 8
+default = -23.8
+item = run border min
+minimum = -30
+maximum = 30
+step = 1
+
+[Running Point High]
+group = TRUE
+groupcol = TRUE
+control = slider
+color = #AA00FF
+collapsible = 1
+shortdesc = Keep this value greater than Running Point High and smaller than check point.
+byteoffset = 6
+bitsize = 8
+default = -24.6
+item = run border max
+minimum = -30
+maximum = 30
+step = 1
+</cfgdesc>
+*/
